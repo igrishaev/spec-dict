@@ -1,44 +1,45 @@
-# spec-dict
+# Dictionary-like Specs
 
-FIXME: description
+```clojure
 
-## Installation
+(s/def ::user-simple
+  (dict {:name string? :age int?}))
 
-Download from http://example.com/FIXME.
 
-## Usage
+(s/def ::user-types
+  (dict {"name" string?
+         :age int?
+         'active boolean?}))
 
-FIXME: explanation
 
-    $ java -jar spec-dict-0.1.0-standalone.jar [args]
+(s/def ::post-nested
+  (dict {:title string?
+         :author {:name string?
+                  :email string?}}))
 
-## Options
+(s/def ::post-ref
+  (dict {:title string?
+         :author ::post-author}))
 
-FIXME: listing of options this app accepts.
 
-## Examples
+(s/def ::post-coll-of
+  (dict {:title string?
+         :authors (s/coll-of ::post-author)}))
 
-...
 
-### Bugs
+(dict #:user{:name string?
+             :age int?})
 
-...
+(dict #:user{:extra/test boolean?
+             :name string?
+             :age int?})
 
-### Any Other Sections
-### That You Think
-### Might be Useful
+(dict {:foo {:bar {:baz {:test {:dunno {:what string?}}}}}})
 
-## License
 
-Copyright © 2020 FIXME
+(dict {:name string?}
+      ^:opt {:age int?})
 
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+(dict ::user-simple
+      {:active boolean?})
+```
