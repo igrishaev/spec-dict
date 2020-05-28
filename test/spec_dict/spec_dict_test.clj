@@ -183,3 +183,85 @@
                      :user/age 34}]]
 
       (is (not (s/valid? spec sample))))))
+
+
+(deftest test-valid-quite-nested
+
+  (let [spec
+        (dict {:foo {:bar {:baz {:test {:dunno {:what string?}}}}}})]
+
+    (doseq [sample [{:foo {:bar {:baz {:test {:dunno {:what "test"}}}}}}]]
+
+      (is (s/valid? spec sample)))
+
+    (doseq [sample [{:foo {:bar {:baz {:test {:dunno {:what false}}}}}}]]
+
+      (is (not (s/valid? spec sample))))))
+
+
+(deftest test-valid-multiple-maps
+
+  (let [spec
+        (dict {:name string?}
+              {:age int?})]
+
+    (doseq [sample [{:name "Ivan" :age 34}]]
+
+      (is (s/valid? spec sample)))
+
+    (doseq [sample [{:name "Ivan"}
+                    {:age 34}]]
+
+      (is (not (s/valid? spec sample))))))
+
+
+(defn test-ok [spec samples]
+  (doseq [sample samples]
+    (is (s/valid? spec sample))))
+
+
+(defn test-err [spec samples]
+  (doseq [sample samples]
+    (is (not (s/valid? spec sample)))))
+
+
+(deftest test-valid-multiple-maps-override
+  (let [spec (dict {:name string?}
+                   {:age int?}
+                   {:name int?})]
+
+    (test-ok spec [{:name 42 :age 34}])
+
+    (test-err spec [{:name "Ivan" :age 34}])))
+
+
+(deftest test-valid-multiple-maps-opt
+  (let [spec (dict {:name string?}
+                   ^:opt {:age int?})]
+
+    (test-ok spec [{:name "Ivan" :age 34}
+                   {:name "Ivan" :test/age 42}
+                   {:name "Ivan"}])
+
+    (test-err spec [{:name "Ivan" :age nil}])))
+
+
+(deftest test-valid-dict-reference
+  (let [spec (dict ::user-simple
+                   {:active boolean?})]
+
+    (test-ok spec [{:name "Ivan" :age 34 :active true}])
+
+    (test-err spec [{:name "Ivan" :age 34}])))
+
+
+(deftest test-valid-multiple-maps-merge
+  (let [fields1 (dict {:name string?})
+        fields2 (dict {:age int?})
+        fields3 (dict {:active boolean?})
+
+        spec (dict fields1 fields2 fields3)]
+
+    (test-ok spec [{:name "Ivan" :age 34 :active true}])
+
+    (test-err spec [{:name "Ivan"}])))

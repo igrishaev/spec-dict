@@ -110,16 +110,50 @@
                  [key (s/describe* spec)]))))
 
 
+(def dict? (partial instance? DictSpec))
+
+
+(defn error!
+  [template & args]
+  (throw (new Exception ^String (apply format template args))))
+
+
 (defn dict [key->spec & more]
 
   (let [key->spec* (transient {})
         req-keys* (transient #{})]
 
     (doseq [key->spec (cons key->spec more)]
-      (doseq [[key spec] key->spec]
-        (when-not (-> key->spec meta :opt)
-          (conj! req-keys* key))
-        (assoc! key->spec* key (specize* spec))))
+
+      (cond
+        (keyword? key->spec)
+        (if-let [spec (s/get-spec key->spec)]
+          (if (dict? spec)
+            (let [{:keys [key->spec
+                          req-keys]} spec]
+              (doseq [[key spec] key->spec]
+                (assoc! key->spec* key spec))
+              (doseq [key req-keys]
+                (conj! req-keys* key)))
+            (error! "Not a dict spec: %s" key->spec))
+          (error! "Missing spec: %s" key->spec))
+
+        (dict? key->spec)
+        (let [{:keys [key->spec
+                      req-keys]} key->spec]
+          (doseq [[key spec] key->spec]
+            (assoc! key->spec* key spec))
+          (doseq [key req-keys]
+            (conj! req-keys* key)))
+
+        (map? key->spec)
+        (doseq [[key spec] key->spec]
+          (when-not (-> key->spec meta :opt)
+            (conj! req-keys* key))
+          (assoc! key->spec* key (specize* spec)))
+
+        :else
+        (error! "Wrong dict param: %s" key->spec)))
 
     (->DictSpec (persistent! key->spec*)
                 (persistent! req-keys*)
