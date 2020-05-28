@@ -41,7 +41,7 @@
        (fn [key->value key spec]
          (if-let [entry (find key->value key)]
            (let [[_ value] entry
-                 result (s/unform* spec value)]
+                 result (s/unform spec value)]
              (assoc key->value key result))
            key->value))
        key->value
@@ -59,7 +59,7 @@
            (if-let [entry (find key->value key)]
 
              (let [[_ value] entry
-                   result (s/conform* spec value)]
+                   result (s/conform spec value)]
                (if (s/invalid? result)
 
                  (conj problems {:val  value
@@ -87,6 +87,8 @@
         (let [args* (transient [])]
           (doseq [[key spec] key->spec]
             (conj! args* key)
+            (conj! args* (s/gen spec overrides))
+            #_
             (conj! args* (s/gen* spec overrides path rmap)))
           (apply sg/hash-map (persistent! args*)))))
 
@@ -95,7 +97,7 @@
 
     (describe* [spec]
       (into {} (for [[key spec] key->spec]
-                 [key (s/describe* spec)]))))
+                 [key (s/describe spec)]))))
 
 
 (def dict? (partial instance? DictSpec))

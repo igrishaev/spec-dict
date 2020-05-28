@@ -2,6 +2,7 @@
   (:require
    [spec-dict :refer [dict]]
    [clojure.spec.alpha :as s]
+   [clojure.test.check.generators :as gen]
    [clojure.test :refer :all]))
 
 
@@ -265,3 +266,52 @@
     (test-ok spec [{:name "Ivan" :age 34 :active true}])
 
     (test-err spec [{:name "Ivan"}])))
+
+
+(s/def ::->int
+  (s/conformer (fn [x]
+                 (try
+                   (Integer/parseInt x)
+                   (catch Exception e
+                     ::s/invalid)))))
+
+
+(deftest test-conform
+  (let [spec (dict {:value ::->int})]
+
+    (let [result (s/conform spec {:value "123"})]
+      (is (= {:value 123} result)))
+
+    (let [result (s/conform spec {:value "test"})]
+
+      (is (s/invalid? result)))))
+
+
+(deftest test-conform-nested
+  (let [spec (dict {:foo (dict {:bar (dict {:baz ::->int})})})]
+
+    (let [result (s/conform spec {:foo {:bar {:baz "123"}}})]
+      (is (= {:foo {:bar {:baz 123}}} result)))))
+
+
+(deftest test-conform-optional
+  (let [spec (dict {:foo (dict {:bar (dict ^:opt {:baz ::->int})})})]
+
+    (let [result (s/conform spec {:foo {:bar {:baz "123"}}})]
+      (is (= {:foo {:bar {:baz 123}}} result)))
+
+    (let [result (s/conform spec {:foo {:bar {:aaa "123"}}})]
+      (is (= {:foo {:bar {:aaa "123"}}} result)))))
+
+
+(deftest test-generator-ok
+  (let [names #{"Ivan" "Juan" "Iogann"}
+        spec (dict {:name names
+                    :age int?})
+        gen (s/gen spec)]
+
+    (dotimes [_ 10]
+      (let [sample (gen/generate gen)]
+        (is (contains? names (:name sample)))
+        (is (int? (:age sample)))
+        (is (= #{:name :age} (set (keys sample))))))))
