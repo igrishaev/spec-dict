@@ -14,8 +14,8 @@
 
 (s/def ::post-nested
   (dict {:title string?
-         :author {:name string?
-                  :email string?}}))
+         :author (dict {:name string?
+                        :email string?})}))
 
 (s/def ::post-ref
   (dict {:title string?
@@ -30,15 +30,15 @@
 (dict #:user{:name string?
              :age int?})
 
+
 (dict #:user{:extra/test boolean?
              :name string?
              :age int?})
 
-(dict {:foo {:bar {:baz {:test {:dunno {:what string?}}}}}})
-
 
 (dict {:name string?}
       ^:opt {:age int?})
+
 
 (dict ::user-simple
       {:active boolean?})
