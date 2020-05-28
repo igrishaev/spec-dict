@@ -63,7 +63,7 @@
                (if (s/invalid? result)
 
                  (conj problems {:val  value
-                                 :pred `todo
+                                 :pred (s/form spec)
                                  :path (conj path key)
                                  :via  (conj via spec)
                                  :in   (conj in key)})

@@ -315,3 +315,16 @@
         (is (contains? names (:name sample)))
         (is (int? (:age sample)))
         (is (= #{:name :age} (set (keys sample))))))))
+
+
+(s/def ::some-name string?)
+
+
+(deftest test-explain-ok
+  (let [spec (dict {:name ::some-name
+                    :age int?})]
+
+    (let [explain (s/explain-data spec {:name 123 :age 43})]
+
+      (is (= {} explain))
+      )))
