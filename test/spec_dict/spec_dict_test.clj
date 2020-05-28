@@ -17,8 +17,8 @@
 
 (s/def ::post-nested
   (dict {:title string?
-         :author {:name string?
-                  :email string?}}))
+         :author (dict {:name string?
+                        :email string?})}))
 
 
 (s/def ::post-author
@@ -85,7 +85,7 @@
     (is (not (s/valid? ::post-nested sample)))))
 
 
-(deftest test-valid-key-nested
+(deftest test-valid-key-nested-ref
 
   (doseq [sample [{:title "Hello"
                    :author {:name "Ivan" :email "test@test.com"}}]]
@@ -188,13 +188,13 @@
 (deftest test-valid-quite-nested
 
   (let [spec
-        (dict {:foo {:bar {:baz {:test {:dunno {:what string?}}}}}})]
+        (dict {:foo (dict {:bar (dict {:baz string?})})})]
 
-    (doseq [sample [{:foo {:bar {:baz {:test {:dunno {:what "test"}}}}}}]]
+    (doseq [sample [{:foo {:bar {:baz "test"}}}]]
 
       (is (s/valid? spec sample)))
 
-    (doseq [sample [{:foo {:bar {:baz {:test {:dunno {:what false}}}}}}]]
+    (doseq [sample [{:foo {:bar {:baz 1}}}]]
 
       (is (not (s/valid? spec sample))))))
 

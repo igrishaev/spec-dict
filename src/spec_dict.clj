@@ -7,18 +7,6 @@
 (def r-invalid (reduced ::s/invalid))
 
 
-(declare dict)
-
-
-(defn- specize*
-  ([spec]
-   (specize* spec nil))
-  ([spec form]
-   (if (map? spec)
-     (s/specize* (dict spec) form)
-     (s/specize* spec form))))
-
-
 (defrecord DictSpec
     [key->spec
      req-keys
@@ -37,7 +25,7 @@
          (fn [key->value key spec]
            (if-let [entry (find key->value key)]
              (let [[_ value] entry
-                   result (s/conform* spec value)]
+                   result (s/conform spec value)]
                (if (s/invalid? result)
                  r-invalid
                  (assoc key->value key result)))
@@ -150,7 +138,7 @@
         (doseq [[key spec] key->spec]
           (when-not (-> key->spec meta :opt)
             (conj! req-keys* key))
-          (assoc! key->spec* key (specize* spec)))
+          (assoc! key->spec* key spec))
 
         :else
         (error! "Wrong dict param: %s" key->spec)))
