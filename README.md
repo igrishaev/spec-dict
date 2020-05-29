@@ -151,7 +151,7 @@ metadata flag:
 
 A dict can reference any spec:
 
-```
+```clojure
 (dict ::user-simple
       {:active :fields/boolean})
 ```
