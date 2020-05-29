@@ -30,7 +30,7 @@ This library is it fix everything said above. Add it:
 
 ```clojure
 ;; deps
-[spec-dict "0.1.0-SNAPSHOT"]
+[spec-dict "0.1.0"]
 
 (require '[spec-dict :refer [dict dict*]])
 ```
