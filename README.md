@@ -26,6 +26,24 @@ What's wrong with it? Namely:
 - there is no a strict version of `s/keys` which fails when extra keys were
   passed. Doing it manually looks messy.
 
+Now imagine if it would have been like this:
+
+```clojure
+;; plain keys
+(s/def ::user
+  {:name string?
+   :age int?
+   :profile {:url? string?
+             :rating int?}})
+
+;; full keys
+(s/def ::user
+  #:user{:name string?
+         :age int?
+         :profile #:profile{:url? string?
+                            :rating int?}})
+```
+
 This library is it to fix everything said above. Add it:
 
 ```clojure
