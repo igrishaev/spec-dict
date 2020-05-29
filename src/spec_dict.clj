@@ -4,13 +4,18 @@
    [clojure.spec.gen.alpha :as sg]))
 
 
+(defn error!
+  [template & args]
+  (throw (new Exception ^String (apply format template args))))
+
+
 (def r-invalid (reduced ::s/invalid))
 
 
 (defrecord DictSpec
     [key->spec
      req-keys
-     gen-fn]
+     gfn]
 
     s/Specize
 
@@ -82,18 +87,16 @@
          key->spec)))
 
     (gen* [_ overrides path rmap]
-      (if gen-fn
-        (gen-fn)
+      (if gfn
+        (gfn)
         (let [args* (transient [])]
           (doseq [[key spec] key->spec]
             (conj! args* key)
-            (conj! args* (s/gen spec overrides))
-            #_
-            (conj! args* (s/gen* spec overrides path rmap)))
+            (conj! args* (s/gen spec overrides)))
           (apply sg/hash-map (persistent! args*)))))
 
     (with-gen* [this gfn]
-      (assoc this :gen-fn gfn))
+      (assoc this :gfn gfn))
 
     (describe* [spec]
       (into {} (for [[key spec] key->spec]
@@ -103,48 +106,41 @@
 (def dict? (partial instance? DictSpec))
 
 
-(defn error!
-  [template & args]
-  (throw (new Exception ^String (apply format template args))))
+(defn ->dict [source]
+
+  (cond
+    (keyword? source)
+    (if-let [spec (s/get-spec source)]
+      (if (dict? spec)
+        spec
+        (error! "Not a dict spec: %s" source))
+      (error! "Missing spec: %s" source))
+
+    (dict? source)
+    source
+
+    (map? source)
+    (let [key->spec* (transient {})
+          req-keys* (transient #{})]
+      (doseq [[key spec] source]
+        (when-not (-> source meta :opt)
+          (conj! req-keys* key))
+        (assoc! key->spec* key spec))
+      (map->DictSpec
+       {:key->spec (persistent! key->spec*)
+        :req-keys (persistent! req-keys*)}))
+
+    :else
+    (error! "Wrong dict param: %s" source)))
+
+
+(defn ->dict-merge [dict1 dict2]
+  (let [{:keys [key->spec req-keys]} dict2]
+    (-> dict1
+        (update :key->spec into key->spec)
+        (update :req-keys into key->spec))))
 
 
 (defn dict [key->spec & more]
-
-  (let [key->spec* (transient {})
-        req-keys* (transient #{})]
-
-    (doseq [key->spec (cons key->spec more)]
-
-      (cond
-        (keyword? key->spec)
-        (if-let [spec (s/get-spec key->spec)]
-          (if (dict? spec)
-            (let [{:keys [key->spec
-                          req-keys]} spec]
-              (doseq [[key spec] key->spec]
-                (assoc! key->spec* key spec))
-              (doseq [key req-keys]
-                (conj! req-keys* key)))
-            (error! "Not a dict spec: %s" key->spec))
-          (error! "Missing spec: %s" key->spec))
-
-        (dict? key->spec)
-        (let [{:keys [key->spec
-                      req-keys]} key->spec]
-          (doseq [[key spec] key->spec]
-            (assoc! key->spec* key spec))
-          (doseq [key req-keys]
-            (conj! req-keys* key)))
-
-        (map? key->spec)
-        (doseq [[key spec] key->spec]
-          (when-not (-> key->spec meta :opt)
-            (conj! req-keys* key))
-          (assoc! key->spec* key spec))
-
-        :else
-        (error! "Wrong dict param: %s" key->spec)))
-
-    (->DictSpec (persistent! key->spec*)
-                (persistent! req-keys*)
-                nil)))
+  (let [sources (map ->dict (cons key->spec more))]
+    (reduce ->dict-merge sources)))
