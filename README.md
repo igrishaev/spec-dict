@@ -13,6 +13,10 @@ example:
 (s/def :user/name    string?)
 (s/def :user/age     int?)
 (s/def :user/profile ::profile)
+(s/def ::user
+  (s/keys :req-un [:user/name
+                   :user/age
+                   :user/profile]))
 ```
 
 What's wrong with it? Namely:
@@ -29,14 +33,16 @@ What's wrong with it? Namely:
 Now imagine if it would have been like this:
 
 ```clojure
-;; plain keys
 (s/def ::user
   {:name string?
    :age int?
    :profile {:url? string?
              :rating int?}})
+```
 
-;; full keys
+or this (full keys):
+
+```clojure
 (s/def ::user
   #:user{:name string?
          :age int?
