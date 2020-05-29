@@ -445,7 +445,7 @@
   (let [spec (dict {:value ::->int2})]
 
     (let [result1 (s/conform spec {:value "123"})
-          result2 (s/unform  spec result1)]
+          result2 (s/unform spec result1)]
 
       (is (= {:value 123} result1))
       (is (= {:value "123"} result2)))))
