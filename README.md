@@ -12,7 +12,7 @@ example:
 
 (s/def :user/name    string?)
 (s/def :user/age     int?)
-(s/def :user/progile ::profile)
+(s/def :user/profile ::profile)
 ```
 
 What's wrong with it? Namely:
@@ -98,7 +98,7 @@ or be a part of a collection as well:
 
 The inner map can be prefixed to get full keys:
 
-```
+```clojure
 ;; spec
 (dict #:user{:extra/test boolean?
              :name string?
