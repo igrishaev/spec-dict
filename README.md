@@ -26,7 +26,7 @@ What's wrong with it? Namely:
 - there is no a strict version of `s/keys` which fails when extra keys were
   passed. Doing it manually looks messy.
 
-This library is it fix everything said above. Add it:
+This library is it to fix everything said above. Add it:
 
 ```clojure
 ;; deps
