@@ -475,3 +475,18 @@
 
     (test-err spec [{:name "test" :age 34 :extra "aa"}
                     {:name "test" :age 34 :active true :extra "aa"}])))
+
+
+(deftest test-dynamic-spec-resolving
+
+  (s/def ::dyn-field string?)
+
+  (s/def ::dyn-map (dict {:field ::dyn-field}))
+
+  (test-ok ::dyn-map [{:field "test"}])
+  (test-err ::dyn-map [{:field 1}])
+
+  (s/def ::dyn-field int?)
+
+  (test-ok ::dyn-map [{:field 42}])
+  (test-err ::dyn-map [{:field "aaa"}]))
