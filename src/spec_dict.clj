@@ -145,7 +145,7 @@
   (let [{:keys [key->spec req-keys]} dict2]
     (-> dict1
         (update :key->spec into key->spec)
-        (update :req-keys into key->spec))))
+        (update :req-keys into req-keys))))
 
 
 (defn dict [key->spec & more]
