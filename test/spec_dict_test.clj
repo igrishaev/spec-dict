@@ -1,6 +1,6 @@
 (ns spec-dict-test
   (:require
-   [spec-dict :refer [dict]]
+   [spec-dict :refer [dict dict*]]
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as sg]
    [clojure.test.check.generators :as gen]
@@ -391,20 +391,20 @@
              problem)))))
 
 
-(deftest test-explain-missing-key
-  (let [spec (dict {:name ::some-name
-                    :age int?})]
+(deftest test-explain-strict-keys
+  (let [spec (dict* {:name string?
+                     :age int?})]
 
-    (let [explain (s/explain-data spec {:age 34})
+    (let [explain (s/explain-data spec {:name "Ivan" :age 34 :extra true})
           {::s/keys [problems]} explain
           [problem] problems]
 
-      (is (= '{:reason "missing key"
-               :val nil
-               :pred (clojure.core/contains? #{:age :name} :name)
-               :path [:name]
-               :via [:spec-dict-test/some-name]
-               :in [:name]}
+      (is (= '{:reason "extra keys"
+               :path []
+               :pred (clojure.set/subset? #{:age :name :extra} #{:age :name})
+               :val {:name "Ivan" :age 34 :extra true}
+               :via []
+               :in []}
              problem)))))
 
 
@@ -449,3 +449,29 @@
 
       (is (= {:value 123} result1))
       (is (= {:value "123"} result2)))))
+
+
+(deftest test-strict-keys-simple
+
+  (let [spec (dict* {:name string?
+                     :age int?})]
+
+    (test-ok spec [{:name "test" :age 34}])
+
+    (test-err spec [{:name "test" :age 34 :extra "aa"}
+                    {:name "test" :age 34 :foo "AAA"}
+                    {:name "test" :age 34 :a nil}
+                    {:name "test" :age 34 nil "AAA"}])))
+
+
+(deftest test-strict-keys-optional
+
+  (let [spec (dict* {:name string?
+                     :age int?}
+                    ^:opt {:active boolean?})]
+
+    (test-ok spec [{:name "test" :age 34}
+                   {:name "test" :age 34 :active true}])
+
+    (test-err spec [{:name "test" :age 34 :extra "aa"}
+                    {:name "test" :age 34 :active true :extra "aa"}])))

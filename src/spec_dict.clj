@@ -1,5 +1,6 @@
 (ns spec-dict
   (:require
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as sg]))
 
@@ -15,7 +16,8 @@
 (defrecord DictSpec
     [key->spec
      req-keys
-     gfn]
+     gfn
+     strict?]
 
     s/Specize
 
@@ -25,21 +27,32 @@
     s/Spec
 
     (conform* [_ key->value]
-      (if (map? key->value)
-        (reduce-kv
-         (fn [key->value key spec]
-           (if-let [entry (find key->value key)]
-             (let [[_ value] entry
-                   result (s/conform spec value)]
-               (if (s/invalid? result)
+
+      ;; check for map
+      (if-not (map? key->value)
+        ::s/invalid
+
+        ;; check for strict keys (delay fetching keys)
+        (if (and strict?
+                 (not (set/subset?
+                       (-> key->value keys set)
+                       (-> key->spec keys set))))
+          ::s/invalid
+
+          ;; check key by key
+          (reduce-kv
+           (fn [key->value key spec]
+             (if-let [entry (find key->value key)]
+               (let [[_ value] entry
+                     result (s/conform spec value)]
+                 (if (s/invalid? result)
+                   r-invalid
+                   (assoc key->value key result)))
+               (if (contains? req-keys key)
                  r-invalid
-                 (assoc key->value key result)))
-             (if (contains? req-keys key)
-               r-invalid
-               key->value)))
-         key->value
-         key->spec)
-        ::s/invalid))
+                 key->value)))
+           key->value
+           key->spec))))
 
     (unform* [_ key->value]
       (reduce-kv
@@ -54,6 +67,7 @@
 
     (explain* [_ path via in key->value]
 
+      ;; map?
       (if-not (map? key->value)
 
         [{:reason "not a map"
@@ -63,35 +77,50 @@
           :via via
           :in in}]
 
-        (reduce-kv
-         (fn [problems key spec]
+        ;; strict keys
+        (if (and strict?
+                 (not (set/subset?
+                       (-> key->value keys set)
+                       (-> key->spec keys set))))
 
-           (if-let [entry (find key->value key)]
+          [{:reason "extra keys"
+            :path path
+            :pred `(set/subset?
+                    ~(-> key->value keys set)
+                    ~(-> key->spec keys set))
+            :val key->value
+            :via via
+            :in in}]
 
-             (let [[_ value] entry
-                   result (s/conform spec value)]
-               (if (s/invalid? result)
+          (reduce-kv
+           (fn [problems key spec]
 
-                 (conj problems {:reason "spec failure"
-                                 :val  value
-                                 :pred (s/form spec)
+             (if-let [entry (find key->value key)]
+
+               (let [[_ value] entry
+                     result (s/conform spec value)]
+                 (if (s/invalid? result)
+
+                   (conj problems {:reason "spec failure"
+                                   :val  value
+                                   :pred (s/form spec)
+                                   :path (conj path key)
+                                   :via  (conj via spec)
+                                   :in   (conj in key)})
+
+                   problems))
+
+               (if (contains? req-keys key)
+                 (conj problems {:reason "missing key"
+                                 :val  nil
+                                 :pred `(contains? ~req-keys ~key)
                                  :path (conj path key)
                                  :via  (conj via spec)
                                  :in   (conj in key)})
 
-                 problems))
-
-             (if (contains? req-keys key)
-               (conj problems {:reason "missing key"
-                               :val  nil
-                               :pred `(contains? ~req-keys ~key)
-                               :path (conj path key)
-                               :via  (conj via spec)
-                               :in   (conj in key)})
-
-               problems)))
-         []
-         key->spec)))
+                 problems)))
+           []
+           key->spec))))
 
     (gen* [_ overrides path rmap]
       (if gfn
@@ -151,3 +180,8 @@
 (defn dict [key->spec & more]
   (let [sources (map ->dict (cons key->spec more))]
     (reduce ->dict-merge sources)))
+
+
+(defn dict* [key->spec & more]
+  (let [d (apply dict key->spec more)]
+    (assoc d :strict? true)))
