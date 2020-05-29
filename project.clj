@@ -1,4 +1,4 @@
-(defproject spec-dict "0.1.0-SNAPSHOT"
+(defproject spec-dict "0.1.0"
 
   :description "Better s/keys spec for Clojure"
 
