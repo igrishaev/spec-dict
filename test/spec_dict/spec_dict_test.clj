@@ -369,3 +369,42 @@
                :via [:spec-dict-test/some-name]
                :in [:name]}
              problem)))))
+
+
+(deftest test-explain-missing-key
+  (let [spec (dict {:name ::some-name
+                    :age int?})]
+
+    (let [explain (s/explain-data spec {:age 34})
+          {::s/keys [problems]} explain
+          [problem] problems]
+
+      (is (= '{:reason "missing key"
+               :val nil
+               :pred (clojure.core/contains? #{:age :name} :name)
+               :path [:name]
+               :via [:spec-dict-test/some-name]
+               :in [:name]}
+             problem)))))
+
+
+(deftest test-describe-spec-simple
+  (let [spec (dict {:name ::some-name
+                    :age int?})]
+
+    (let [result (s/describe spec)]
+
+      (is (= '{:name string? :age int?}
+             result)))))
+
+
+(deftest test-describe-spec-nested
+  (let [spec (dict {:name string?
+                    :age int?
+                    :profile (dict {:url string?
+                                    :rating int?})})]
+
+    (let [result (s/describe spec)]
+
+      (is (= '{:name string? :age int? :profile {:url string? :rating int?}}
+             result)))))
