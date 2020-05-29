@@ -320,11 +320,52 @@
 (s/def ::some-name string?)
 
 
-(deftest test-explain-ok
+(deftest test-explain-wrong-spec
   (let [spec (dict {:name ::some-name
                     :age int?})]
 
-    (let [explain (s/explain-data spec {:name 123 :age 43})]
+    (let [explain (s/explain-data spec {:name 123 :age 43})
+          {::s/keys [problems]} explain
+          [problem] problems]
 
-      (is (= {} explain))
-      )))
+      (is (= '{:reason "spec failure"
+               :val 123
+               :pred clojure.core/string?
+               :path [:name]
+               :via [:spec-dict-test/some-name]
+               :in [:name]}
+             problem)))))
+
+
+(deftest test-explain-not-map
+  (let [spec (dict {:name ::some-name
+                    :age int?})]
+
+    (let [explain (s/explain-data spec 123)
+          {::s/keys [problems]} explain
+          [problem] problems]
+
+      (is (= '{:reason "not a map"
+               :path []
+               :pred clojure.core/map?
+               :val 123
+               :via []
+               :in []}
+             problem)))))
+
+
+(deftest test-explain-missing-key
+  (let [spec (dict {:name ::some-name
+                    :age int?})]
+
+    (let [explain (s/explain-data spec {:age 34})
+          {::s/keys [problems]} explain
+          [problem] problems]
+
+      (is (= '{:reason "missing key"
+               :val nil
+               :pred (clojure.core/contains? #{:age :name} :name)
+               :path [:name]
+               :via [:spec-dict-test/some-name]
+               :in [:name]}
+             problem)))))

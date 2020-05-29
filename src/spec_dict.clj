@@ -56,7 +56,12 @@
 
       (if-not (map? key->value)
 
-        [{:path path :pred `map? :val key->value :via via :in in}]
+        [{:reason "not a map"
+          :path path
+          :pred `map?
+          :val key->value
+          :via via
+          :in in}]
 
         (reduce-kv
          (fn [problems key spec]
@@ -67,7 +72,8 @@
                    result (s/conform spec value)]
                (if (s/invalid? result)
 
-                 (conj problems {:val  value
+                 (conj problems {:reason "spec failure"
+                                 :val  value
                                  :pred (s/form spec)
                                  :path (conj path key)
                                  :via  (conj via spec)
@@ -76,7 +82,8 @@
                  problems))
 
              (if (contains? req-keys key)
-               (conj problems {:val  nil
+               (conj problems {:reason "missing key"
+                               :val  nil
                                :pred `(contains? ~req-keys ~key)
                                :path (conj path key)
                                :via  (conj via spec)
