@@ -2,6 +2,7 @@
   (:require
    [spec-dict :refer [dict]]
    [clojure.spec.alpha :as s]
+   [clojure.spec.gen.alpha :as sg]
    [clojure.test.check.generators :as gen]
    [clojure.test :refer :all]))
 
@@ -317,6 +318,25 @@
         (is (= #{:name :age} (set (keys sample))))))))
 
 
+(deftest test-with-generator
+  (let [names #{"Ivan" "Juan" "Iogann"}
+
+        spec (dict {:name string?}
+                   ^:opt {:age int?})
+
+        gfn (fn []
+              (sg/hash-map :name (s/gen names)))
+
+        spec* (s/with-gen spec gfn)
+
+        gen (s/gen spec*)]
+
+    (dotimes [_ 10]
+      (let [sample (gen/generate gen)]
+        (is (contains? names (:name sample)))
+        (is (= #{:name} (set (keys sample))))))))
+
+
 (s/def ::some-name string?)
 
 
@@ -408,3 +428,24 @@
 
       (is (= '{:name string? :age int? :profile {:url string? :rating int?}}
              result)))))
+
+
+(s/def ::->int2
+  (s/conformer (fn [x]
+                 (try
+                   (Integer/parseInt x)
+                   (catch Exception e
+                     ::s/invalid)))
+               (fn [x]
+                 (str x))))
+
+
+(deftest test-unform-simple
+
+  (let [spec (dict {:value ::->int2})]
+
+    (let [result1 (s/conform spec {:value "123"})
+          result2 (s/unform  spec result1)]
+
+      (is (= {:value 123} result1))
+      (is (= {:value "123"} result2)))))
