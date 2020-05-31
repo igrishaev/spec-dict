@@ -307,3 +307,49 @@ Explain for a strict version:
  :via []
  :in []}
 ```
+
+A dictionary spec supports `s/keys`. A `s/keys` one gets converted into a
+dictionary keeping in mind all type of keys: `req`, `req-opt`, `opt`, and
+`opt-un`:
+
+```clojure
+(s/def :profile/url    string?)
+(s/def :profile/rating int?)
+(s/def ::profile
+  (s/keys :req-un [:profile/url
+                   :profile/rating]))
+
+(s/def :user/name    string?)
+(s/def :user/age     int?)
+(s/def :user/profile ::profile)
+(s/def ::user
+  (s/keys :req-un [:user/name
+                   :user/age
+                   :user/profile]))
+
+
+;; profile spec
+(dict ::profile)
+
+;; data
+{:url "http://test.com"
+ :rating 99.99}
+```
+
+Having a dict spec makes it easier to merge other keys:
+
+```clojure
+(let [spec-p (dict ::profile {:paid boolean?})
+      spec-u (dict ::user {:profile spec-p
+                           :active? boolean?})]
+  ...)
+
+
+;; data for spec-u
+{:name "test"
+ :age 42
+ :active? true
+ :profile {:url "http://test.com"
+           :rating 99
+           :paid true}}
+```
