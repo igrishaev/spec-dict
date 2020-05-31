@@ -490,3 +490,127 @@
 
   (test-ok ::dyn-map [{:field 42}])
   (test-err ::dyn-map [{:field "aaa"}]))
+
+
+(s/def :profile/url    string?)
+(s/def :profile/rating int?)
+(s/def ::profile
+  (s/keys :req-un [:profile/url
+                   :profile/rating]))
+
+(s/def :user/name    string?)
+(s/def :user/age     int?)
+(s/def :user/profile ::profile)
+(s/def ::user
+  (s/keys :req-un [:user/name
+                   :user/age
+                   :user/profile]))
+
+
+(deftest test-dict-from-spec-keys
+  (let [spec (dict ::profile)
+        data {:url "http://test.com"
+              :rating 99}]
+
+    (is (s/valid? ::profile data))
+    (is (s/valid? spec data))))
+
+
+(deftest test-dict-spec-keys-explain
+  (let [spec (dict ::profile)
+        data {:url "http://test.com"
+              :rating 99.99}
+
+        explain1
+        (s/explain-data ::profile data)
+
+        {::s/keys [problems]} explain1
+        [problem1] problems
+
+        explain2
+        (s/explain-data spec data)
+
+        {::s/keys [problems]} explain2
+        [problem2] problems
+
+        fields [:path :pred :val :in]]
+
+    (is (= (select-keys problem1 fields)
+           (select-keys problem2 fields)))))
+
+
+(s/def :sample/name string?)
+(s/def :sample/rating int?)
+
+(s/def :sample/active boolean?)
+
+(s/def :sample/age int?)
+
+(s/def :sample/comment string?)
+(s/def :sample/prefix keyword?)
+
+(s/def ::sample
+  (s/keys :req [:sample/name
+                :sample/rating]
+          :req-un [:sample/active
+                   :sample/extra]
+          :opt [:sample/age]
+          :opt-un [:sample/comment
+                   :sample/prefix]))
+
+
+(deftest test-dict-spec-keys-explain
+  (let [spec1 ::sample
+        spec2 (dict spec1)
+
+        data {:sample/name "test"
+              :sample/rating 33
+              :extra 123
+              :active true
+              :sample/age 88
+              :comment "test"
+              :prefix :foobar}]
+
+    (doseq [sample [data
+                    (dissoc data :sample/active)
+                    (dissoc data :sample/comment)
+                    (dissoc data :sample/prefix)
+                    (dissoc data :age)
+                    (assoc data :aaaa 42)
+                    (assoc data :name 42)
+                    (assoc data :age "ssss")]]
+
+      (is (s/valid? spec1 sample))
+      (is (s/valid? spec2 sample)))
+
+    (doseq [sample [(dissoc data :sample/name)
+                    (dissoc data :active)
+                    (assoc data :sample/active {:wrong :type})]]
+
+      (is (not (s/valid? spec1 sample)))
+      (is (not (s/valid? spec2 sample))))))
+
+
+(deftest test-override-spec-keys
+
+  (let [spec-p (dict ::profile {:paid boolean?})
+        spec-u (dict ::user {:profile spec-p
+                             :active? boolean?})]
+
+    (test-ok spec-u [{:name "test"
+                      :age 42
+                      :active? true
+                      :profile {:url "http://test.com"
+                                :rating 99
+                                :paid true}}])
+
+    (test-err spec-u [{:name "test"
+                       :age 42
+                       :profile {:url "http://test.com"
+                                 :rating 99
+                                 :paid true}}
+                      {:name "test"
+                       :age 42
+                       :active? true
+                       :profile {:url "http://test.com"
+                                 :rating 99}}])))

@@ -5,7 +5,7 @@
    [clojure.spec.gen.alpha :as sg]))
 
 
-(defn error!
+(defn- error!
   [template & args]
   (throw (new Exception ^String (apply format template args))))
 
@@ -142,35 +142,105 @@
 (def dict? (partial instance? DictSpec))
 
 
-(defn ->dict [source]
+(defn ->opt [mapping]
+  (with-meta mapping {:opt true}))
+
+
+(defn opt? [mapping]
+  (some-> mapping meta :opt))
+
+
+(defn- map->dict [source]
+  (let [key->spec* (transient {})
+        req-keys* (transient #{})]
+    (doseq [[key spec] source]
+      (when-not (opt? source)
+        (conj! req-keys* key))
+      (assoc! key->spec* key spec))
+    (map->DictSpec
+     {:key->spec (persistent! key->spec*)
+      :req-keys (persistent! req-keys*)})))
+
+
+(defn- spec-keys? [spec]
+  (some-> spec s/form first (= `s/keys)))
+
+
+(defn- unk [fqkw]
+  (-> fqkw name keyword))
+
+
+(defn- spec-or-any? [kwd]
+  (if (s/get-spec kwd)
+    kwd
+    any?))
+
+
+(declare dict) ;; ugly
+
+
+(defn- keys->dict [spec-keys]
+
+  (let [form (s/form spec-keys)
+
+        {:keys [req opt req-un opt-un]}
+        (apply hash-map (rest form))
+
+        map-req
+        (merge
+         (into {} (for [spec req]
+                    [spec (spec-or-any? spec)]))
+         (into {} (for [spec req-un]
+                    [(unk spec) (spec-or-any? spec)])))
+
+        map-opt
+        (merge
+         (into {} (for [spec opt]
+                    [spec (spec-or-any? spec)]))
+         (into {} (for [spec opt-un]
+                    [(unk spec) (spec-or-any? spec)]))
+
+         ;; for compatibility with s/keys
+         (into {} (for [spec opt-un]
+                    [spec (spec-or-any? spec)]))
+         (into {} (for [spec req-un]
+                    [spec (spec-or-any? spec)])))]
+
+    (dict map-req (->opt map-opt))))
+
+
+(defn- keyword->dict [source]
+  (if-let [spec (s/get-spec source)]
+    (cond
+      (dict? spec)
+      spec
+
+      (spec-keys? spec)
+      (keys->dict spec)
+
+      :else
+      (error! "Not a dict spec: %s" source))
+
+    (error! "Missing spec: %s" source)))
+
+
+(defn- ->dict [source]
 
   (cond
     (keyword? source)
-    (if-let [spec (s/get-spec source)]
-      (if (dict? spec)
-        spec
-        (error! "Not a dict spec: %s" source))
-      (error! "Missing spec: %s" source))
+    (keyword->dict source)
 
     (dict? source)
     source
 
     (map? source)
-    (let [key->spec* (transient {})
-          req-keys* (transient #{})]
-      (doseq [[key spec] source]
-        (when-not (-> source meta :opt)
-          (conj! req-keys* key))
-        (assoc! key->spec* key spec))
-      (map->DictSpec
-       {:key->spec (persistent! key->spec*)
-        :req-keys (persistent! req-keys*)}))
+    (map->dict source)
 
     :else
     (error! "Wrong dict param: %s" source)))
 
 
-(defn ->dict-merge [dict1 dict2]
+(defn- ->dict-merge [dict1 dict2]
   (let [{:keys [key->spec req-keys]} dict2]
     (-> dict1
         (update :key->spec into key->spec)
@@ -182,6 +252,10 @@
     (reduce ->dict-merge sources)))
 
 
+(defn strict [d]
+  (assoc d :strict? true))
+
+
 (defn dict* [key->spec & more]
   (let [d (apply dict key->spec more)]
-    (assoc d :strict? true)))
+    (strict d)))
