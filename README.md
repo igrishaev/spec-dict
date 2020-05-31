@@ -54,7 +54,7 @@ This library is it to fix everything said above. Add it:
 
 ```clojure
 ;; deps
-[spec-dict "0.1.0"]
+[spec-dict "0.2.0"]
 
 (require '[spec-dict :refer [dict dict*]])
 ```
