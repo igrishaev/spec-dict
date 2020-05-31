@@ -173,6 +173,13 @@ metadata flag:
 {:name "Ivan" :age nil}
 ```
 
+But if you pass optional keys as a variable, wrap it with a function:
+
+```clojure
+(dict {:name string?}
+      (->opt some-other-mapping))
+```
+
 A dict can reference any spec:
 
 ```clojure
