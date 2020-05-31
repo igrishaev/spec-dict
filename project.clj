@@ -12,11 +12,11 @@
 
   :release-tasks
   [["test"]
-   #_["vcs" "assert-committed"]
+   ["vcs" "assert-committed"]
    ["change" "version" "leiningen.release/bump-version" "release"]
    ["vcs" "commit"]
    ["vcs" "tag"]
-   ["deploy"]
+   ["deploy" "clojars"]
    ["change" "version" "leiningen.release/bump-version"]
    ["vcs" "commit"]
    ["vcs" "push"]]
