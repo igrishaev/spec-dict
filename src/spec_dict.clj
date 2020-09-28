@@ -125,11 +125,11 @@
     (gen* [_ overrides path rmap]
       (if gfn
         (gfn)
-        (let [args* (transient [])]
-          (doseq [[key spec] key->spec]
-            (conj! args* key)
-            (conj! args* (s/gen spec overrides)))
-          (apply sg/hash-map (persistent! args*)))))
+        (apply sg/hash-map
+               (mapcat
+                (fn [[key spec]]
+                  [key (s/gen spec overrides)])
+                key->spec))))
 
     (with-gen* [this gfn]
       (assoc this :gfn gfn))
@@ -150,16 +150,14 @@
   (some-> mapping meta :opt))
 
 
-(defn- map->dict [source]
-  (let [key->spec* (transient {})
-        req-keys* (transient #{})]
-    (doseq [[key spec] source]
-      (when-not (opt? source)
-        (conj! req-keys* key))
-      (assoc! key->spec* key spec))
+(defn map->dict [source]
+  (let [req-keys
+        (if (opt? source)
+          #{}
+          (-> source keys set))]
     (map->DictSpec
-     {:key->spec (persistent! key->spec*)
-      :req-keys (persistent! req-keys*)})))
+     {:key->spec source
+      :req-keys req-keys})))
 
 
 (defn- spec-keys? [spec]
